@@ -1,0 +1,122 @@
+I need to build a Python FastAPI backend service for an Urban Harvest Vending Machine system. This will serve a React frontend AND an admin dashboard with the following flows:
+
+CUSTOMER FLOW: Welcome → Selection (smoothie/salad) → Items (preset recipes) → Customization (modify ingredients/addons) → Payment → Processing → Thank You
+ADMIN FLOW: Dashboard → Machine Management → Inventory Management → Product Management → Order Monitoring → Reports
+
+DATABASE SCHEMA CONTEXT:
+I have a PostgreSQL database with these key tables:
+- vending_machines (id, location, status, cups_qty, bowls_qty)
+- ingredients (id, name, emoji, min_qty_g, max_percent_limit, calories_per_g, price_per_gram)
+- addons (id, name, price, calories, icon)
+- presets (id, name, category, price, calories, description, image)
+- preset_ingredients (preset_id, ingredient_id, grams)
+- machine_ingredients (machine_id, ingredient_id, qty_available_g, low_stock_threshold_g)
+- machine_addons (machine_id, addon_id, qty_available, low_stock_threshold)
+- orders (id, user_id, machine_id, session_id, status, total_price, total_calories)
+- order_items (order_id, ingredient_id, grams_used, price)
+- order_addons (order_id, addon_id, qty, price)
+- users (id, name, email, phone, created_at)
+
+The database has comprehensive views like v_available_items_per_machine, v_preset_availability_per_machine, v_machine_inventory_status, v_machine_dashboard, v_low_stock_alerts, etc.
+
+BUSINESS RULES:
+- Each vending machine has independent inventory
+- Only one order can be processed per machine at a time
+- Stock validation and deduction must happen in transactions
+- Price calculation: ingredients by price_per_gram * grams_used, addons have fixed prices
+- Orders have statuses: pending → processing → completed/failed/cancelled
+- Need to check ingredient availability and min_qty_g constraints
+- Need to validate machine status (active/maintenance/inactive)
+- Admin operations require proper authentication/authorization
+
+REQUIRED PROJECT STRUCTURE:
+
+vending_api/ ├── app/ │ ├── init.py │ ├── main.py # FastAPI app entry point │ ├── config/ │ │ ├── init.py │ │ ├── database.py # DB connection & session management │ │ └── settings.py # Environment variables & config │ ├── models/ │ │ ├── init.py │ │ ├── base.py # Base SQLAlchemy model │ │ ├── machine.py # VendingMachine, MachineIngredient, MachineAddon │ │ ├── product.py # Ingredient, Addon, Preset, PresetIngredient │ │ ├── order.py # Order, OrderItem, OrderAddon │ │ └── user.py # User model │ ├── schemas/ │ │ ├── init.py │ │ ├── machine.py # Pydantic schemas for machine endpoints │ │ ├── product.py # Schemas for ingredients, addons, presets │ │ ├── order.py # Order request/response schemas │ │ ├── admin.py # Admin-specific schemas │ │ └── common.py # Common response schemas │ ├── dao/ │ │ ├── init.py │ │ ├── base_dao.py # Base DAO with common CRUD operations │ │ ├── machine_dao.py # Machine inventory operations │ │ ├── product_dao.py # Ingredient, addon, preset operations │ │ ├── order_dao.py # Order CRUD with transactions │ │ ├── admin_dao.py # Admin-specific operations │ │ └── queries/ │ │ ├── init.py │ │ ├── machine_queries.py # Raw SQL for complex machine queries │ │ ├── inventory_queries.py # Stock management queries │ │ ├── order_queries.py # Order processing queries │ │ └── admin_queries.py # Admin reports and analytics │ ├── services/ │ │ ├── init.py │ │ ├── machine_service.py # Machine status, inventory management │ │ ├── product_service.py # Product availability, pricing logic │ │ ├── order_service.py # Order processing, validation, transactions │ │ ├── inventory_service.py # Stock updates, alerts │ │ └── admin_service.py # Admin operations │ ├── controllers/ │ │ ├── init.py │ │ ├── machine_controller.py # Customer machine endpoints │ │ ├── product_controller.py # Customer product endpoints │ │ ├── order_controller.py # Customer order endpoints │ │ ├── health_controller.py # Health check endpoints │ │ └── admin/ │ │ ├── init.py │ │ ├── machine_admin_controller.py # Admin machine management │ │ ├── inventory_admin_controller.py # Admin inventory management │ │ ├── product_admin_controller.py # Admin product management │ │ ├── order_admin_controller.py # Admin order monitoring │ │ └── dashboard_controller.py # Admin dashboard │ ├── transformers/ │ │ ├── init.py │ │ ├── machine_transformer.py # Transform DB models to API responses │ │ ├── product_transformer.py # Product data transformations │ │ ├── order_transformer.py # Order response formatting │ │ └── admin_transformer.py # Admin-specific transformations │ └── utils/ │ ├── init.py │ ├── exceptions.py # Custom exceptions │ ├── validators.py # Business logic validators │ ├── auth.py # Authentication helpers │ └── helpers.py # Utility functions ├── requirements.txt ├── .env.example └── 
+
+
+CUSTOMER API ENDPOINTS:
+1. GET /api/v1/machines/{machine_id}/inventory - Available ingredients/addons with stock
+2. GET /api/v1/machines/{machine_id}/presets - Available preset recipes
+3. POST /api/v1/orders - Create new order with validation and stock deduction
+4. GET /api/v1/orders/{order_id} - Get order status
+5. PUT /api/v1/orders/{order_id}/status - Update order status (machine updates)
+
+ADMIN API ENDPOINTS:
+# Machine Management
+6. GET /api/v1/admin/machines - List all machines with status and metrics
+7. POST /api/v1/admin/machines - Create new vending machine
+8. PUT /api/v1/admin/machines/{machine_id} - Update machine details (location, status)
+9. DELETE /api/v1/admin/machines/{machine_id} - Delete machine
+10. PUT /api/v1/admin/machines/{machine_id}/status - Change machine status (active/maintenance/inactive)
+11. PUT /api/v1/admin/machines/{machine_id}/containers - Update cups/bowls quantity
+
+# Inventory Management
+12. GET /api/v1/admin/machines/{machine_id}/inventory - Full inventory with stock levels
+13. PUT /api/v1/admin/machines/{machine_id}/ingredients/{ingredient_id}/stock - Update ingredient stock
+14. PUT /api/v1/admin/machines/{machine_id}/addons/{addon_id}/stock - Update addon stock
+15. POST /api/v1/admin/machines/{machine_id}/restock - Bulk restock operation
+16. GET /api/v1/admin/inventory/alerts - Get low stock and out-of-stock alerts
+17. PUT /api/v1/admin/inventory/thresholds - Update low stock thresholds
+
+# Product Management
+18. GET /api/v1/admin/ingredients - List all ingredients with details
+19. POST /api/v1/admin/ingredients - Create new ingredient
+20. PUT /api/v1/admin/ingredients/{ingredient_id} - Update ingredient details
+21. DELETE /api/v1/admin/ingredients/{ingredient_id} - Delete ingredient
+22. GET /api/v1/admin/addons - List all addons
+23. POST /api/v1/admin/addons - Create new addon
+24. PUT /api/v1/admin/addons/{addon_id} - Update addon details
+25. DELETE /api/v1/admin/addons/{addon_id} - Delete addon
+26. GET /api/v1/admin/presets - List all presets with recipes
+27. POST /api/v1/admin/presets - Create new preset with ingredient recipe
+28. PUT /api/v1/admin/presets/{preset_id} - Update preset and recipe
+29. DELETE /api/v1/admin/presets/{preset_id} - Delete preset
+
+# Order Management & Monitoring
+30. GET /api/v1/admin/orders - List orders with filters (date, machine, status)
+31. GET /api/v1/admin/orders/{order_id} - Get detailed order information
+32. PUT /api/v1/admin/orders/{order_id}/status - Admin order status updates
+33. GET /api/v1/admin/orders/stats - Order statistics and metrics
+
+# Dashboard & Reports
+34. GET /api/v1/admin/dashboard - Overall system metrics and KPIs
+35. GET /api/v1/admin/reports/sales - Sales reports by date range
+36. GET /api/v1/admin/reports/inventory - Inventory movement reports
+37. GET /api/v1/admin/reports/machine-performance - Machine performance analytics
+
+CRITICAL REQUIREMENTS:
+- Use database transactions for all order processing and inventory updates
+- Implement proper error handling with meaningful HTTP status codes
+- Add request/response logging for all admin operations
+- Use Pydantic for comprehensive request validation
+- Implement proper dependency injection
+- Add comprehensive input validation with business rule checks
+- Use environment variables for database connection
+- Implement proper exception handling with custom exceptions
+- Add database connection pooling
+- Use asyncio/async patterns where appropriate
+- Add audit logging for all admin operations
+- Implement proper pagination for list endpoints
+- Add filtering and sorting for admin list endpoints
+
+TRANSACTION EXAMPLES NEEDED:
+1. Order Creation: Validate → Calculate → Create → Deduct Stock (all in one transaction)
+2. Bulk Restock: Update multiple ingredient/addon quantities atomically
+3. Preset Creation: Create preset + create all preset_ingredient relationships
+4. Machine Status Change: Update status + handle any pending orders
+
+ADMIN VALIDATION REQUIREMENTS:
+- Prevent deleting ingredients/addons that are in active presets
+- Prevent deleting machines that have pending orders
+- Validate ingredient constraints (min_qty_g, max_percent_limit)
+- Validate pricing changes don't break existing presets
+- Ensure stock updates maintain data integrity
+
+RESPONSE FORMATS:
+- Consistent error responses with error codes and messages
+- Paginated responses for list endpoints
+- Rich metadata for admin endpoints (created_at, updated_at, etc.)
+- Include related data in responses to minimize API calls
+- Proper HTTP status codes (200, 201, 400, 404, 409, 500)
+
+Please create a production-ready FastAPI application with clean architecture, comprehensive admin functionality, proper error handling, audit logging, and robust database operations using the schema views. Focus on transaction management, data validation, and clear separation between customer and admin concerns.
