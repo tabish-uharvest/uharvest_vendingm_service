@@ -55,7 +55,7 @@ class MachineService:
                     is_available=item.get('stock_status') == 'AVAILABLE',
                     price_per_unit=item.get('price_per_gram'),
                     calories_per_unit=item.get('calories_per_g'),
-                    min_qty=None,  # Not available in view
+                    min_qty_g=item.get('min_qty_g'),
                     max_percent_limit=item.get('max_percent_limit')
                 )
                 for item in ingredient_data

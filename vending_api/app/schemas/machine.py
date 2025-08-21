@@ -100,7 +100,7 @@ class MachineInventoryItemResponse(BaseSchema):
     is_available: bool
     price_per_unit: Optional[Decimal] = None
     calories_per_unit: Optional[Decimal] = None
-    min_qty: Optional[int] = None
+    min_qty_g: Optional[int] = None
     max_percent_limit: Optional[int] = None
 
 

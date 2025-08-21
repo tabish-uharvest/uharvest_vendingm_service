@@ -17,7 +17,7 @@ class Order(BaseModel):
     total_calories = Column(Integer, default=0, nullable=False)
     
     __table_args__ = (
-        CheckConstraint("status IN ('processing', 'completed', 'failed', 'cancelled')", name='check_order_status'),
+        CheckConstraint("status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')", name='check_order_status'),
         CheckConstraint("total_price >= 0", name='check_total_price'),
         CheckConstraint("total_calories >= 0", name='check_total_calories'),
     )

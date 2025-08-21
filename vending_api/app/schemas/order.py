@@ -32,7 +32,7 @@ class OrderCreateRequest(BaseSchema):
     
     @validator('status')
     def validate_status(cls, v):
-        allowed_statuses = ['processing', 'completed', 'failed', 'cancelled']
+        allowed_statuses = ['pending', 'processing', 'completed', 'failed', 'cancelled']
         if v not in allowed_statuses:
             raise ValueError(f'Status must be one of: {", ".join(allowed_statuses)}')
         return v

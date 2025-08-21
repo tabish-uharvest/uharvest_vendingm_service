@@ -65,7 +65,8 @@ class MachineInventoryViewDAO:
                     'low_stock_threshold_g': obj.low_stock_threshold_g,
                     'stock_status': obj.stock_status,
                     'stock_percentage': obj.stock_percentage,
-                    'inventory_updated_at': obj.inventory_updated_at
+                    'inventory_updated_at': obj.inventory_updated_at,
+                    'min_qty_g': obj.min_qty_g
                 })
             
             return inventory_list

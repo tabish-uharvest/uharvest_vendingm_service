@@ -28,7 +28,7 @@ class VMachineIngredientInventory(ViewBase):
     stock_status = Column(String(20))
     stock_percentage = Column(Numeric(5, 2))
     inventory_updated_at = Column(DateTime)
-
+    min_qty_g = Column(Integer)  
 
 class VMachineAddonInventory(ViewBase):
     """Model for v_machine_addon_inventory view"""
