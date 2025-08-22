@@ -346,9 +346,10 @@ class MachineDAO(BaseDAO[VendingMachine]):
         session: AsyncSession, 
         machine_id: UUID, 
         ingredients: List[Dict[str, Any]], 
-        addons: List[Dict[str, Any]]
+        addons: List[Dict[str, Any]],
+        session_id: Optional[str] = None
     ) -> bool:
-        """Deduct stock for ingredients and addons (used in order processing)"""
+        """Deduct stock for ingredients, addons, and containers (used in order processing)"""
         try:
             # Deduct ingredient stock
             for ingredient in ingredients:
@@ -419,6 +420,34 @@ class MachineDAO(BaseDAO[VendingMachine]):
                     )
                     .values(qty_available=MachineAddon.qty_available - qty)
                 )
+            
+            # Deduct container stock based on session_id
+            if session_id:
+                if session_id.startswith("smoothie-"):
+                    # Deduct 1 cup for smoothie orders
+                    machine = await session.get(VendingMachine, machine_id)
+                    if machine and machine.cups_qty > 0:
+                        await session.execute(
+                            update(VendingMachine)
+                            .where(VendingMachine.id == machine_id)
+                            .values(cups_qty=VendingMachine.cups_qty - 1)
+                        )
+                        logger.info(f"Deducted 1 cup for smoothie order (session: {session_id})")
+                    else:
+                        logger.warning(f"No cups available for smoothie order (session: {session_id})")
+                        
+                elif session_id.startswith("salad-"):
+                    # Deduct 1 bowl for salad orders
+                    machine = await session.get(VendingMachine, machine_id)
+                    if machine and machine.bowls_qty > 0:
+                        await session.execute(
+                            update(VendingMachine)
+                            .where(VendingMachine.id == machine_id)
+                            .values(bowls_qty=VendingMachine.bowls_qty - 1)
+                        )
+                        logger.info(f"Deducted 1 bowl for salad order (session: {session_id})")
+                    else:
+                        logger.warning(f"No bowls available for salad order (session: {session_id})")
             
             return True
         except Exception as e:

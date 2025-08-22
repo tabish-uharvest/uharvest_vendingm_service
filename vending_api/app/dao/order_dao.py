@@ -75,7 +75,7 @@ class OrderDAO(BaseDAO[Order]):
                 await self._create_order_addon(session, order.id, addon_data)
             
             # Deduct stock
-            await self.machine_dao.deduct_stock(session, machine_id, ingredients, addons)
+            await self.machine_dao.deduct_stock(session, machine_id, ingredients, addons, session_id)
             
             # Load the complete order with relationships
             return await self.get_order_with_details(session, order.id)
