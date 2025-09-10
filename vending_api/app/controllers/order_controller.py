@@ -184,3 +184,23 @@ async def get_current_machine_orders(
     return await order_service.get_orders_by_machine(
         db, current_machine_id, status, date_from, date_to, skip, limit
     )
+
+
+@router.get("/orders/{order_id}/summary", response_model=dict)
+async def get_order_summary_string(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Get formatted order summary string
+    Returns container type, items, and quantities in readable format
+    """
+    try:
+        order_string = await order_service.get_order_string(db, order_id)
+        return {
+            "order_id": order_id,
+            "order_string": order_string,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Order {order_id} not found")

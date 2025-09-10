@@ -95,6 +95,7 @@ class OrderResponse(BaseSchema):
     # Note: updated_at field removed as it doesn't exist in the database schema
     items: List[OrderItemResponse]
     addons: List[OrderAddonResponse]
+    order_string: Optional[str] = Field(None, description="Formatted order details string")
 
 
 class OrderDetailResponse(OrderResponse):

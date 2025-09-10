@@ -59,8 +59,12 @@ class OrderService:
                     addons=addons_dict
                 )
                 
+                # Generate order string for successful order
+                order_string = self._generate_order_string(order)
+                logger.info(f"ORDER CREATED: {order_string}")
+                
                 # Convert to response schema
-                return await self._order_to_response(session, order)
+                return await self._order_to_response(session, order, order_string)
                 
         except Exception as e:
             logger.error(f"Error creating order: {e}")
@@ -262,7 +266,93 @@ class OrderService:
         
         return True
     
-    async def _order_to_response(self, session: AsyncSession, order: Order) -> OrderResponse:
+    def _generate_order_string(self, order: Order) -> str:
+        """Generate formatted order string with dispensing process details"""
+        try:
+            process_steps = []
+            
+            # Step 1: Determine container type from session_id
+            container_type = "1 container"  # Default fallback
+            is_smoothie = False
+            is_salad = False
+            
+            if order.session_id:
+                if order.session_id.startswith("smoothie-"):
+                    container_type = "1 cup"
+                    is_smoothie = True
+                elif order.session_id.startswith("salad-"):
+                    container_type = "1 bowl"
+                    is_salad = True
+            
+            # Add container dispensing
+            process_steps.append(container_type)
+            
+            # Step 2: Dispense all ingredients
+            if order.order_items:
+                for item in order.order_items:
+                    ingredient_name = "Unknown Item"
+                    if item.ingredient:
+                        ingredient_name = item.ingredient.name or "Unknown Item"
+                    
+                    # Format: "dispense item_name qty"
+                    if item.qty_ml and item.qty_ml > 0:
+                        process_steps.append(f"dispense {ingredient_name} {item.qty_ml}ml")
+                    elif item.grams_used and item.grams_used > 0:
+                        process_steps.append(f"dispense {ingredient_name} {item.grams_used}g")
+                    else:
+                        process_steps.append(f"dispense {ingredient_name}")
+            
+            # Step 3: Add all addons
+            if order.order_addons:
+                for addon in order.order_addons:
+                    addon_name = "Unknown Addon"
+                    if addon.addon:
+                        addon_name = addon.addon.name or "Unknown Addon"
+                    
+                    qty = addon.qty or 1
+                    process_steps.append(f"add {addon_name} x{qty}")
+            
+            # Step 4: Move to next chamber AFTER all items and addons are dispensed
+            if order.order_items or order.order_addons:
+                process_steps.append("move to next chamber")
+            
+            # Step 5: Add static liquid components based on order type
+            if is_smoothie:
+                process_steps.append("add 50ml milk")
+                process_steps.append("add 50ml hot water")
+            elif is_salad:
+                process_steps.append("add 50ml solid dressing 1")
+                process_steps.append("add 50ml dressing 2")
+            else:
+                # Default for unknown types
+                process_steps.append("add finishing touches")
+            
+            # Join all steps with ", "
+            order_string = ", ".join(process_steps)
+            
+            # Add order ID and timestamp for reference
+            order_timestamp = order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else "Unknown time"
+            final_string = f"Order #{str(order.id)[:8]} - {order_string} - {order_timestamp}"
+            
+            return final_string
+            
+        except Exception as e:
+            logger.error(f"Error generating order string for order {order.id}: {e}")
+            return f"Order #{str(order.id)[:8]} - Order details unavailable"
+    
+    async def get_order_string(self, session: AsyncSession, order_id: UUID) -> str:
+        """Get formatted order string for existing order"""
+        try:
+            order = await self.order_dao.get_order_with_details(session, order_id)
+            if not order:
+                return f"Order #{str(order_id)[:8]} - Order not found"
+            
+            return self._generate_order_string(order)
+        except Exception as e:
+            logger.error(f"Error getting order string for {order_id}: {e}")
+            return f"Order #{str(order_id)[:8]} - Error retrieving order details"
+    
+    async def _order_to_response(self, session: AsyncSession, order: Order, order_string: Optional[str] = None) -> OrderResponse:
         """Convert Order model to OrderResponse schema"""
         try:
             # Transform order items with safe attribute access
@@ -322,7 +412,8 @@ class OrderService:
                 total_calories=order.total_calories or 0,
                 created_at=order.created_at,
                 items=items,
-                addons=addons
+                addons=addons,
+                order_string=order_string or self._generate_order_string(order)
             )
         except Exception as e:
             logger.error(f"Error converting order {order.id} to response: {e}")
@@ -338,5 +429,6 @@ class OrderService:
                 total_calories=order.total_calories or 0,
                 created_at=order.created_at,
                 items=[],
-                addons=[]
+                addons=[],
+                order_string=order_string or f"Order #{str(order.id)[:8]} - Order details unavailable"
             )
