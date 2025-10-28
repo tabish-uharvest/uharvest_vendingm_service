@@ -19,6 +19,7 @@ from app.utils.exceptions import (
     InsufficientStockError
 )
 from app.config.database import get_async_db, get_async_transaction
+from app.ros.ros_interface import RosInterface
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class OrderService:
     def __init__(self):
         self.order_dao = OrderDAO()
         self.machine_dao = MachineDAO()
-    
+        self.ros_interface = RosInterface.get_instance()
     async def create_order(
         self, 
         order_request: OrderCreateRequest,
@@ -62,6 +63,8 @@ class OrderService:
                 # Generate order string for successful order
                 order_string = self._generate_order_string(order)
                 logger.info(f"ORDER CREATED: {order_string}")
+
+                self.ros_interface.publish_order_string(order_string)
                 
                 # Convert to response schema
                 return await self._order_to_response(session, order, order_string)
