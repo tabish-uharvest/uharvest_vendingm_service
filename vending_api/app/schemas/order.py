@@ -29,6 +29,7 @@ class OrderCreateRequest(BaseSchema):
     session_id: Optional[str] = Field(None, description="Session ID from UI")
     ingredients: List[OrderItemRequest] = Field(..., min_items=1, max_items=20, description="Order ingredients")
     addons: List[OrderAddonRequest] = Field([], max_items=10, description="Order addons")
+    liquids: List[Dict[str, Any]] = Field([], description="Liquids for dynamic order string (not saved to DB)")
     
     @validator('status')
     def validate_status(cls, v):

@@ -45,8 +45,9 @@ class OrderService:
                 # Convert Pydantic models to dictionaries
                 ingredients_dict = [item.dict() for item in order_request.ingredients]
                 addons_dict = [addon.dict() for addon in order_request.addons]
+                liquids_dict = order_request.liquids if isinstance(order_request.liquids, list) else []
                 
-                # Create the order with all items
+                # Create the order with all items (liquids not saved to DB)
                 order = await self.order_dao.create_order_with_items(
                     session=session,
                     machine_id=order_request.machine_id,
@@ -56,11 +57,12 @@ class OrderService:
                     total_calories=order_request.total_calories,
                     status=order_request.status,
                     ingredients=ingredients_dict,
-                    addons=addons_dict
+                    addons=addons_dict,
+                    liquids=liquids_dict
                 )
                 
-                # Generate order string for successful order
-                order_string = self._generate_order_string(order)
+                # Generate order string for successful order (uses liquids for dynamic amounts)
+                order_string = self._generate_order_string(order, liquids_dict)
                 logger.info(f"ORDER CREATED: {order_string}")
                 
                 # Convert to response schema
@@ -266,7 +268,7 @@ class OrderService:
         
         return True
     
-    def _generate_order_string(self, order: Order) -> str:
+    def _generate_order_string(self, order: Order, liquids: Optional[List[Dict[str, Any]]] = None) -> str:
         """Generate formatted order string with dispensing process details"""
         try:
             process_steps = []
@@ -316,13 +318,18 @@ class OrderService:
             if order.order_items or order.order_addons:
                 process_steps.append("move to next chamber")
             
-            # Step 5: Add static liquid components based on order type
-            if is_smoothie:
-                process_steps.append("add 50ml milk")
-                process_steps.append("add 50ml hot water")
-            elif is_salad:
-                process_steps.append("add 50ml solid dressing 1")
-                process_steps.append("add 50ml dressing 2")
+            # Step 5: Add dynamic liquid components based on liquids from UI and order type
+            if liquids:
+                for liquid in liquids:
+                    liquid_name = liquid.get('liquid_name', 'liquid')
+                    qty = liquid.get('qty', '0 ml')
+                    process_steps.append(f"add {qty} {liquid_name}")
+            # elif is_smoothie:
+            #     process_steps.append("add 50ml milk")
+            #     process_steps.append("add 50ml hot water")
+            # elif is_salad:
+            #     process_steps.append("add 50ml salad dressing 1")
+            #     process_steps.append("add 50ml salad dressing 2")
             else:
                 # Default for unknown types
                 process_steps.append("add finishing touches")

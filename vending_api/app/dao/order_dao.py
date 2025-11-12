@@ -40,7 +40,8 @@ class OrderDAO(BaseDAO[Order]):
         total_calories: int,
         status: str,
         ingredients: List[Dict[str, Any]],
-        addons: List[Dict[str, Any]]
+        addons: List[Dict[str, Any]],
+        liquids: Optional[List[Dict[str, Any]]] = None
     ) -> Order:
         """Create order with items - all data comes from UI"""
         try:

@@ -1,0 +1,87 @@
+# Liquids - Final Implementation
+
+## Changes Made
+
+### 1. Removed from Database
+- ❌ Removed `liquids` JSON column from Order model
+- ❌ Removed JSON import from Order model
+- ❌ NOT saving liquids to database anymore
+
+### 2. Kept in Request/Response Flow
+- ✅ Liquids accepted in `OrderCreateRequest` as `List[Dict[str, Any]]`
+- ✅ Liquids NOT returned in `OrderResponse` (not saved to DB)
+- ✅ Liquids used ONLY for dynamic order string generation
+
+### 3. Dynamic Order String (Step 5)
+- ✅ If liquids provided from UI → use them for Step 5
+  - Format: `add {qty} {liquid_name}` (e.g., "add 50ml milk")
+- ✅ If NO liquids provided → default: "add finishing touches"
+
+## Files Modified
+
+1. **app/models/order.py**
+   - Removed: `liquids` column
+   - Removed: JSON import
+
+2. **app/dao/order_dao.py**
+   - Removed: `"liquids": liquids or []` from order_data
+
+3. **app/schemas/order.py**
+   - ✅ ADDED: `liquids: List[Dict[str, Any]]` to OrderCreateRequest
+   - Liquids NOT in response (not saved to DB)
+
+4. **app/services/order_service.py**
+   - Updated: `_generate_order_string()` accepts liquids parameter
+   - Updated: `create_order()` passes liquids (as list of dicts)
+   - Removed: liquids transformation in `_order_to_response()`
+
+## Request Schema
+
+```python
+class OrderCreateRequest(BaseSchema):
+    machine_id: uuid.UUID
+    total_price: Decimal
+    total_calories: int
+    status: str = "processing"
+    session_id: Optional[str]
+    ingredients: List[OrderItemRequest]
+    addons: List[OrderAddonRequest]
+    liquids: List[Dict[str, Any]] = []  # NEW - NOT saved to DB
+```
+
+## Example Request
+
+```json
+{
+  "machine_id": "550e8400-e29b-41d4-a716-446655440000",
+  "total_price": 12.50,
+  "total_calories": 350,
+  "ingredients": [...],
+  "addons": [...],
+  "liquids": [
+    {"liquid_name": "milk", "qty": "50ml"},
+    {"liquid_name": "almond milk", "qty": "30ml"}
+  ]
+}
+```
+
+## Example Order String
+
+**With liquids:**
+```
+Order #880e8400 - 1 cup, dispense Banana 100g, add Honey x1, move to next chamber, add 50ml milk, add 30ml almond milk - 2025-11-12 10:30:45
+```
+
+**Without liquids:**
+```
+Order #880e8400 - 1 cup, dispense Banana 100g, add Honey x1, move to next chamber, add finishing touches - 2025-11-12 10:30:45
+```
+
+## Summary
+
+✅ Liquids are pass-through (not saved to database)
+✅ Liquids used to make Step 5 of order string dynamic
+✅ Falls back to "add finishing touches" if no liquids provided
+✅ No migration needed (no DB changes)
+✅ Backward compatible
+✅ Schema updated to accept liquids as List[Dict[str, Any]]
