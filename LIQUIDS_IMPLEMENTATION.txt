@@ -85,3 +85,111 @@ Order #880e8400 - 1 cup, dispense Banana 100g, add Honey x1, move to next chambe
 ✅ No migration needed (no DB changes)
 ✅ Backward compatible
 ✅ Schema updated to accept liquids as List[Dict[str, Any]]
+
+
+docker file backups 
+# FROM python:3.11-slim
+
+# WORKDIR /app
+
+# # Install system dependencies
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     postgresql-client \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # Copy requirements
+# COPY vending_api/requirements.txt .
+
+# # Install Python dependencies
+# RUN pip install --no-cache-dir -r requirements.txt
+
+# # Copy application code
+# COPY vending_api/ .
+
+# # Set environment variables
+# ENV HOST=0.0.0.0
+# ENV PORT=8000
+# ENV DATABASE_URL=postgresql+asyncpg://uharvest:Tabish@localhost:5433/uharvest_db
+
+# # Expose port
+# EXPOSE 8000
+
+# # Health check
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+#     CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+
+# # Run the application
+# CMD ["python", "run_server.py"]
+
+
+# # Use the official ROS Jazzy base image (has /opt/ros/jazzy)
+# FROM ros:jazzy
+
+# # set workdir
+# WORKDIR /app
+
+# # install system deps your app needs
+# RUN apt-get update && apt-get install -y \
+#     gcc \
+#     python3-pip \
+#     python3-venv \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # Copy your python requirements and app
+# COPY vending_api/requirements.txt /app/requirements.txt
+# RUN python3 -m pip install --no-cache-dir -r /app/requirements.txt
+
+# COPY vending_api/ /app/
+
+# # Source ROS and run (use bash -c so setup.bash is sourced)
+# ENV HOST=0.0.0.0
+# ENV PORT=8000
+# EXPOSE 8000
+
+# # Run: source ROS 2 then start your FastAPI server
+# CMD ["bash","-lc","source /opt/ros/jazzy/setup.bash && python run_server.py"]
+
+
+# FROM ros:jazzy
+
+# ENV DEBIAN_FRONTEND=noninteractive
+# WORKDIR /app
+
+# # Install build tools and python runtime support (no python3-distutils)
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     build-essential \
+#     gcc \
+#     python3-venv \
+#     python3-dev \
+#     python3-pip \
+#     python3-setuptools \
+#     libpq-dev \
+#     postgresql-client \
+#     curl \
+#     ca-certificates \
+#     && rm -rf /var/lib/apt/lists/*
+
+# # Create virtualenv
+# RUN python3 -m venv /opt/venv
+# ENV VIRTUAL_ENV=/opt/venv
+# ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# # Upgrade pip/tools inside venv
+# RUN pip install --upgrade pip setuptools wheel
+
+# # Copy and install requirements
+# COPY vending_api/requirements.txt /app/requirements.txt
+# RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# # Copy app
+# COPY vending_api/ /app/
+
+# ENV HOST=0.0.0.0
+# ENV PORT=8000
+# ENV DATABASE_URL=postgresql+asyncpg://uharvest:Tabish@127.0.0.1:5433/uharvest_db
+
+# EXPOSE 8000
+
+# # Source ROS and activate venv when running
+# CMD ["bash", "-lc", "source /opt/ros/jazzy/setup.bash && source /opt/venv/bin/activate && python run_server.py"]
